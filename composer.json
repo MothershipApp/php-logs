@@ -1,0 +1,29 @@
+{
+    "name": "mothership-app/php-logs",
+    "description": "Error logging library for Mothership",
+    "keywords": [
+        "logs",
+        "logging",
+        "mothership",
+        "debugging",
+        "exceptions",
+        "errors"
+    ],
+    "license": "GNU v3.0",
+    "authors": [
+        {
+            "name": "Mothership Team",
+            "email": "support@mothership.app"
+        }
+    ],
+    "require": {
+        "ext-curl": "*",
+        "psr/log": "^1",
+        "monolog/monolog": "^1 || ^2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Mothership\\": "src/"
+        }
+    }
+}

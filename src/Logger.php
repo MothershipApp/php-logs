@@ -39,7 +39,7 @@ class Logger
         self::$client->flushAndWait();
     }
 
-    private static function init(
+    public static function init(
         $configOrClient,
         $handleException = true,
         $handleError = true,

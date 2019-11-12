@@ -111,13 +111,13 @@ class Client extends AbstractLogger
                 $this->config->getSender()->toString()
             );
             $this->debugLogger->debug($truncated);
-            
+
             $response = $this->send($truncated, $accessToken);
 
             $this->debugLogger->info("Received response from Logs API.");
             $this->debugLogger->debug(print_r($response, true));
         }
-        
+
         $this->handleResponse($payload, $response);
         
         return $response;

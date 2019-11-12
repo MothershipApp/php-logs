@@ -88,7 +88,7 @@ class Defaults
         $this->data['fluentTag'] = 'logs';
         $this->data['handler'] = 'blocking';
         $this->data['host'] = null;
-        $this->data['timeout'] = 3;
+        $this->data['timeout'] = 10;
         $this->data['reportSuppressed'] = false;
         $this->data['useErrorReporting'] = false;
         $this->data['verbosity'] = \Psr\Log\LogLevel::ERROR;

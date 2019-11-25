@@ -11,50 +11,52 @@ class Defaults
 
     public static function get()
     {
-        if (is_null(self::$singleton)) {
+        if (is_null(self::$singleton))
+        {
             self::$singleton = new Defaults(new Utilities());
         }
+
         return self::$singleton;
     }
 
     public function __construct($utilities)
     {
         $this->data = array();
-        
+
         $this->data['psrLevels'] = array(
             LogLevel::EMERGENCY => "critical",
-            "emergency" => "critical",
-            LogLevel::ALERT => "critical",
-            "alert" => "critical",
-            LogLevel::CRITICAL => "critical",
-            "critical" => "critical",
-            LogLevel::ERROR => "error",
-            "error" => "error",
-            LogLevel::WARNING => "warning",
-            "warning" => "warning",
-            LogLevel::NOTICE => "info",
-            "notice" => "info",
-            LogLevel::INFO => "info",
-            "info" => "info",
-            LogLevel::DEBUG => "debug",
-            "debug" => "debug"
+            "emergency"         => "critical",
+            LogLevel::ALERT     => "critical",
+            "alert"             => "critical",
+            LogLevel::CRITICAL  => "critical",
+            "critical"          => "critical",
+            LogLevel::ERROR     => "error",
+            "error"             => "error",
+            LogLevel::WARNING   => "warning",
+            "warning"           => "warning",
+            LogLevel::NOTICE    => "info",
+            "notice"            => "info",
+            LogLevel::INFO      => "info",
+            "info"              => "info",
+            LogLevel::DEBUG     => "debug",
+            "debug"             => "debug"
         );
         $this->data['errorLevels'] = array(
-            E_ERROR => "error",
-            E_WARNING => "warning",
-            E_PARSE => "critical",
-            E_NOTICE => "debug",
-            E_CORE_ERROR => "critical",
-            E_CORE_WARNING => "warning",
-            E_COMPILE_ERROR => "critical",
-            E_COMPILE_WARNING => "warning",
-            E_USER_ERROR => "error",
-            E_USER_WARNING => "warning",
-            E_USER_NOTICE => "debug",
-            E_STRICT => "info",
+            E_ERROR             => "error",
+            E_WARNING           => "warning",
+            E_PARSE             => "critical",
+            E_NOTICE            => "debug",
+            E_CORE_ERROR        => "critical",
+            E_CORE_WARNING      => "warning",
+            E_COMPILE_ERROR     => "critical",
+            E_COMPILE_WARNING   => "warning",
+            E_USER_ERROR        => "error",
+            E_USER_WARNING      => "warning",
+            E_USER_NOTICE       => "debug",
+            E_STRICT            => "info",
             E_RECOVERABLE_ERROR => "error",
-            E_DEPRECATED => "info",
-            E_USER_DEPRECATED => "info"
+            E_DEPRECATED        => "info",
+            E_USER_DEPRECATED   => "info"
         );
         $this->data['gitHash'] = null;
         $this->data['gitBranch'] = null;
@@ -77,7 +79,7 @@ class Defaults
         $this->data['allowExec'] = true;
         $this->data['messageLevel'] = "warning";
         $this->data['exceptionLevel'] = "error";
-        $this->data['endpoint'] = 'https://mothership.app/api/v1/logs/';
+        $this->data['endpoint'] = 'https://logs.mothership.app/api/v1/logs/';
         $this->data['captureErrorStacktraces'] = true;
         $this->data['checkIgnore'] = null;
         $this->data['custom'] = null;
@@ -105,54 +107,66 @@ class Defaults
             'csrf_token',
             'access_token'
         );
-        
+
         $this->utilities = $utilities;
     }
-    
+
     public function __call($method, $args)
     {
-        if (!array_key_exists($method, $this->data)) {
+        if (!array_key_exists($method, $this->data))
+        {
             throw new \Exception('No default value defined for property ' . $method . '.');
         }
-        
+
         return (isset($args[0]) && $args[0] !== null) ? $args[0] : $this->data[$method];
     }
-    
+
     public function fromSnakeCase($option)
     {
         $spaced = str_replace('_', ' ', $option);
         $method = lcfirst(str_replace(' ', '', ucwords($spaced)));
+
         return $this->$method();
     }
 
     public function gitBranch($gitBranch = null, $allowExec = true)
     {
-        if ($gitBranch) {
+        if ($gitBranch)
+        {
             return $gitBranch;
         }
-        if ($allowExec) {
+        if ($allowExec)
+        {
             static $cachedValue;
             static $hasExecuted = false;
-            if (!$hasExecuted) {
+            if (!$hasExecuted)
+            {
                 $cachedValue = self::getGitBranch();
                 $hasExecuted = true;
             }
+
             return $cachedValue;
         }
+
         return null;
     }
-    
+
     private static function getGitBranch()
     {
-        try {
-            if (function_exists('shell_exec')) {
+        try
+        {
+            if (function_exists('shell_exec'))
+            {
                 $output = rtrim(shell_exec('git rev-parse --abbrev-ref HEAD 2> /dev/null'));
-                if ($output) {
+                if ($output)
+                {
                     return $output;
                 }
             }
+
             return null;
-        } catch (\Exception $e) {
+        } catch (\Exception $e)
+        {
             return null;
         }
     }

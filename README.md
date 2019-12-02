@@ -14,7 +14,7 @@ composer require mothership-app/php-logs
 
 ## General PHP
 
-```app/Exceptions/Handler.php
+```php
 use Mothership\Logger;
 
 Logger::init([
@@ -26,7 +26,9 @@ Logger::error($exception);
 
 ## Laravel
 
-```php app/Exceptions/Handler.php
+Edit your ```app/Exceptions/Handler.php``` file with the following and you're good to go.
+
+```php
 use Illuminate\Support\Facades\App;
 use Mothership\Logger;
 ...

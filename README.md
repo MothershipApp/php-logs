@@ -14,7 +14,7 @@ composer require mothership-app/php-logs
 
 ## General PHP
 
-```php
+```app/Exceptions/Handler.php
 use Mothership\Logger;
 
 Logger::init([

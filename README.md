@@ -31,25 +31,25 @@ use Illuminate\Support\Facades\App;
 use Mothership\Logger;
 ...
 
-    /**
-     * Render an exception into an HTTP response.
-     *
-     * @param  \Illuminate\Http\Request $request
-     * @param  \Exception $exception
-     * @return \Illuminate\Http\Response
-     */
-    public function render($request, Exception $exception)
+/**
+ * Render an exception into an HTTP response.
+ *
+ * @param  \Illuminate\Http\Request $request
+ * @param  \Exception $exception
+ * @return \Illuminate\Http\Response
+ */
+public function render($request, Exception $exception)
+{
+    if ($this->shouldReport($exception))
     {
-        if ($this->shouldReport($exception))
-        {
-            Logger::init([
-                'access_token' => 'XXXXXXXXX - YOUR KEY - XXXXXXXX',
-                'environment'  => App::environment()
-            ]);
-            Logger::error($exception);
-        }
-
-        parent::report($exception);
+        Logger::init([
+            'access_token' => 'XXXXXXXXX - YOUR KEY - XXXXXXXX',
+            'environment'  => App::environment()
+        ]);
+        Logger::error($exception);
     }
+
+    parent::report($exception);
+}
 
 ```

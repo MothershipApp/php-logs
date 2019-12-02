@@ -2,7 +2,7 @@
 
 ## About
 
-Mothership PHP Logs allows you to log server-side errors to your [https://mothership.app](Mothership) account where you can gather and organize logs in addition to performing backups, healthchecks, and sync your devlopment box with your various environments in seconds.
+Mothership PHP Logs allows you to log server-side errors to your [Mothership](https://mothership.app) account where you can gather and organize logs in addition to performing backups, healthchecks, and sync your devlopment box with your various environments in seconds.
 
 Once you've signed up let's get started!
 

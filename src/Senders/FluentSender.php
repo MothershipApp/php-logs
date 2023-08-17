@@ -1,17 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
+
+
 namespace Mothership\Senders;
 
 use Fluent\Logger\FluentLogger;
 use Mothership\Response;
 use Mothership\Payload\EncodedPayload;
+use Mothership\UtilitiesTrait;
 
 class FluentSender implements SenderInterface
 {
-    /**
-     * @var Utilities
-     */
-    private $utilities;
+    use UtilitiesTrait;
 
     /**
      * @var FluentLogger FluentLogger instance
@@ -31,7 +33,7 @@ class FluentSender implements SenderInterface
     /**
      * @var string Tag that will be used for filter and match sections in fluentd
      */
-    private $fluentTag = 'logs';
+    private $fluentTag = 'mothership';
 
 
     /**
@@ -40,41 +42,42 @@ class FluentSender implements SenderInterface
      */
     public function __construct($opts)
     {
-        $this->fluentHost = Mothership\Defaults::get()->fluentHost();
-        $this->fluentPort = Mothership\Defaults::get()->fluentPort();
-        $this->fluentTag = Mothership\Defaults::get()->fluentTag();
-        
-        $this->utilities = new Utilities();
+        $this->fluentHost = \Mothership\Defaults::get()->fluentHost();
+        $this->fluentPort = \Mothership\Defaults::get()->fluentPort();
+        $this->fluentTag = \Mothership\Defaults::get()->fluentTag();
+
         if (isset($opts['fluentHost'])) {
-            $this->utilities->validateString($opts['fluentHost'], 'opts["fluentHost"]', null, false);
+            $this->utilities()->validateString($opts['fluentHost'], 'opts["fluentHost"]', null, false);
             $this->fluentHost = $opts['fluentHost'];
         }
 
         if (isset($opts['fluentPort'])) {
-            $this->utilities->validateInteger($opts['fluentPort'], 'opts["fluentPort"]', null, null, false);
+            $this->utilities()->validateInteger($opts['fluentPort'], 'opts["fluentPort"]', null, null, false);
             $this->fluentPort = $opts['fluentPort'];
         }
 
         if (isset($opts['fluentTag'])) {
-            $this->utilities->validateString($opts['fluentTag'], 'opts["fluentTag"]', null, false);
+            $this->utilities()->validateString($opts['fluentTag'], 'opts["fluentTag"]', null, false);
             $this->fluentTag = $opts['fluentTag'];
         }
     }
 
 
     /**
-     * @param Mothership\Payload\EncodedPayload $scrubbedPayload
-     * @param $accessToken
+     * @param \Mothership\Payload\EncodedPayload $payload
+     * @param string $accessToken
      * @return Response
      *
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter) Unsued parameter is
-     * intended here to comply to SenderInterface
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter) Unused parameter is
+     * intended here to comply with SenderInterface
      */
-    public function send(EncodedPayload $payload, $accessToken)
+    public function send(EncodedPayload $payload, string $accessToken): Response
     {
         if (empty($this->fluentLogger)) {
             $this->loadFluentLogger();
         }
+
+        $scrubbedPayload = $payload->data();
 
         $success = $this->fluentLogger->post($this->fluentTag, $scrubbedPayload);
         $status = $success ? 200 : 400;
@@ -84,21 +87,32 @@ class FluentSender implements SenderInterface
         return new Response($status, $info, $uuid);
     }
 
-    public function sendBatch($batch, $accessToken)
+    public function sendBatch(array $batch, string $accessToken, &$responses = array()): void
     {
         $responses = array();
         foreach ($batch as $payload) {
             $responses[] = $this->send($payload, $accessToken);
         }
-        return $responses;
     }
 
     /**
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
-    public function wait($accessToken, $max)
+    public function wait(string $accessToken, int $max): void
     {
         return;
+    }
+
+    /**
+     * Returns true if the access token is required by the sender to send the payload. The Fluentd service can provide
+     * its own access token.
+     *
+     * @return bool
+     * @since 4.0.0
+     */
+    public function requireAccessToken(): bool
+    {
+        return false;
     }
 
     /**
@@ -107,11 +121,5 @@ class FluentSender implements SenderInterface
     protected function loadFluentLogger()
     {
         $this->fluentLogger = new FluentLogger($this->fluentHost, $this->fluentPort);
-    }
-    
-    public function toString()
-    {
-        return "fluentd " . $this->fluentHost . ":" . $this->fluentPort .
-                " tag: " . $this->fluentTag;
     }
 }

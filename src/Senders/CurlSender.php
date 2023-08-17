@@ -1,19 +1,24 @@
-<?php namespace Mothership\Senders;
+<?php
+
+declare(strict_types=1);
+
+namespace Mothership\Senders;
 
 /**
  * Adapted from:
  * https://github.com/segmentio/analytics-php/blob/master/lib/Segment/Consumer/Socket.php
  */
 
-use Mothership\Defaults;
+use CurlHandle;
 use Mothership\Response;
 use Mothership\Payload\Payload;
 use Mothership\Payload\EncodedPayload;
-use Mothership\Utilities;
+use Mothership\UtilitiesTrait;
 
 class CurlSender implements SenderInterface
 {
-    private $utilities;
+    use UtilitiesTrait;
+
     private $endpoint;
     private $timeout;
     private $proxy = null;
@@ -26,19 +31,18 @@ class CurlSender implements SenderInterface
 
     public function __construct($opts)
     {
-        $this->endpoint = Defaults::get()->endpoint() . 'item/';
-        $this->timeout = Defaults::get()->timeout();
-        
-        $this->utilities = new Utilities();
-        if (isset($_ENV['LOGS_ENDPOINT']) && !isset($opts['endpoint'])) {
-            $opts['endpoint'] = $_ENV['LOGS_ENDPOINT'];
+        $this->endpoint = \Mothership\Defaults::get()->endpoint() . 'item/';
+        $this->timeout = \Mothership\Defaults::get()->timeout();
+
+        if (isset($_ENV['ROLLBAR_ENDPOINT']) && !isset($opts['endpoint'])) {
+            $opts['endpoint'] = $_ENV['ROLLBAR_ENDPOINT'];
         }
         if (array_key_exists('endpoint', $opts)) {
-            $this->utilities->validateString($opts['endpoint'], 'opts["endpoint"]', null, false);
+            $this->utilities()->validateString($opts['endpoint'], 'opts["endpoint"]', null, false);
             $this->endpoint = $opts['endpoint'];
         }
         if (array_key_exists('timeout', $opts)) {
-            $this->utilities->validateInteger($opts['timeout'], 'opts["timeout"]', 0, null, false);
+            $this->utilities()->validateInteger($opts['timeout'], 'opts["timeout"]', 0, null, false);
             $this->timeout = $opts['timeout'];
         }
         if (array_key_exists('proxy', $opts)) {
@@ -46,40 +50,40 @@ class CurlSender implements SenderInterface
         }
 
         if (array_key_exists('verifyPeer', $opts)) {
-            $this->utilities->validateBoolean($opts['verifyPeer'], 'opts["verifyPeer"]', false);
+            $this->utilities()->validateBoolean($opts['verifyPeer'], 'opts["verifyPeer"]', false);
             $this->verifyPeer = $opts['verifyPeer'];
         }
         if (array_key_exists('ca_cert_path', $opts)) {
             $this->caCertPath = $opts['ca_cert_path'];
         }
     }
-    
+
     public function getEndpoint()
     {
         return $this->endpoint;
     }
 
-    public function send(EncodedPayload $payload, $accessToken)
+    public function send(EncodedPayload $payload, string $accessToken): Response
     {
         $handle = curl_init();
 
         $this->setCurlOptions($handle, $payload, $accessToken);
         $result = curl_exec($handle);
         $statusCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
-        
+
         $result = $result === false ?
-                    curl_error($handle) :
-                    json_decode($result, true);
-        
+            curl_error($handle) :
+            json_decode($result, true);
+
         curl_close($handle);
 
         $data = $payload->data();
-        $uuid = $data['data']['uuid'];
-        
+        $uuid = $data['data']['uuid'] ?? null;
+
         return new Response($statusCode, $result, $uuid);
     }
 
-    public function sendBatch($batch, $accessToken)
+    public function sendBatch(array $batch, string $accessToken): void
     {
         if ($this->multiHandle === null) {
             $this->multiHandle = curl_multi_init();
@@ -94,7 +98,7 @@ class CurlSender implements SenderInterface
         $this->checkForCompletedRequests($accessToken);
     }
 
-    public function wait($accessToken, $max = 0)
+    public function wait(string $accessToken, int $max = 0): void
     {
         if (count($this->inflightRequests) <= $max) {
             return;
@@ -108,7 +112,19 @@ class CurlSender implements SenderInterface
         }
     }
 
-    private function maybeSendMoreBatchRequests($accessToken)
+    /**
+     * Returns true if the access token is required by the sender to send the payload. The curl sender requires the
+     * access token since it is sending directly to the Mothership service.
+     *
+     * @return bool
+     * @since 4.0.0
+     */
+    public function requireAccessToken(): bool
+    {
+        return false;
+    }
+
+    private function maybeSendMoreBatchRequests(string $accessToken)
     {
         $max = $this->maxBatchRequests - count($this->inflightRequests);
         if ($max <= 0) {
@@ -127,7 +143,7 @@ class CurlSender implements SenderInterface
         $this->batchRequests = array_slice($this->batchRequests, $idx);
     }
 
-    public function setCurlOptions($handle, EncodedPayload $payload, $accessToken)
+    public function setCurlOptions(CurlHandle $handle, EncodedPayload $payload, string $accessToken)
     {
         curl_setopt($handle, CURLOPT_URL, $this->endpoint);
         curl_setopt($handle, CURLOPT_POST, true);
@@ -136,7 +152,7 @@ class CurlSender implements SenderInterface
         curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, $this->verifyPeer);
         curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($handle, CURLOPT_TIMEOUT, $this->timeout);
-        curl_setopt($handle, CURLOPT_HTTPHEADER, array('Authorization: Bearer ' . $accessToken));
+        curl_setopt($handle, CURLOPT_HTTPHEADER, array('X-Mothership-Access-Token: ' . $accessToken));
         curl_setopt($handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 
         if (!is_null($this->caCertPath)) {
@@ -155,7 +171,7 @@ class CurlSender implements SenderInterface
         }
     }
 
-    private function checkForCompletedRequests($accessToken)
+    private function checkForCompletedRequests(string $accessToken)
     {
         do {
             $curlResponse = curl_multi_exec($this->multiHandle, $active);
@@ -172,7 +188,7 @@ class CurlSender implements SenderInterface
         $this->removeFinishedRequests($accessToken);
     }
 
-    private function removeFinishedRequests($accessToken)
+    private function removeFinishedRequests(string $accessToken)
     {
         while ($info = curl_multi_info_read($this->multiHandle)) {
             $handle = $info['handle'];
@@ -184,10 +200,5 @@ class CurlSender implements SenderInterface
             curl_close($handle);
         }
         $this->maybeSendMoreBatchRequests($accessToken);
-    }
-    
-    public function toString()
-    {
-        return "Logs API endpoint: " . $this->getEndpoint();
     }
 }

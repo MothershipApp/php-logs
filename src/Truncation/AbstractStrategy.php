@@ -1,22 +1,28 @@
-<?php namespace Mothership\Truncation;
+<?php
 
-use \Mothership\Payload\EncodedPayload;
+declare(strict_types=1);
 
-class AbstractStrategy implements IStrategy
+namespace Mothership\Truncation;
+
+use Mothership\Payload\EncodedPayload;
+
+/**
+ * The base for all Mothership truncation classes.
+ *
+ * @since 1.1.0
+ */
+abstract class AbstractStrategy implements StrategyInterface
 {
-    protected $truncation;
-    
-    public function __construct($truncation)
+    public function __construct(protected Truncation $truncation)
     {
-        $this->truncation = $truncation;
     }
-    
-    public function execute(EncodedPayload $payload)
+
+    public function execute(EncodedPayload $payload): EncodedPayload
     {
         return $payload;
     }
-    
-    public function applies(EncodedPayload $payload)
+
+    public function applies(EncodedPayload $payload): bool
     {
         return true;
     }

@@ -1,41 +1,53 @@
-<?php namespace Mothership\Payload;
+<?php
 
-use Mothership\Utilities;
+declare(strict_types=1);
 
-class Body implements \Serializable
+namespace Mothership\Payload;
+
+use Mothership\SerializerInterface;
+use Mothership\UtilitiesTrait;
+
+class Body implements SerializerInterface
 {
-    /**
-     * @var ContentInterface
-     */
-    private $value;
-    private $utilities;
+    use UtilitiesTrait;
 
-    public function __construct(ContentInterface $value)
-    {
-        $this->utilities = new Utilities();
-        $this->setValue($value);
+    public function __construct(
+        private ContentInterface $value,
+        private array $extra = array()
+    ) {
     }
 
-    public function getValue()
+    public function getValue(): ContentInterface
     {
         return $this->value;
     }
 
-    public function setValue(ContentInterface $value)
+    public function setValue(ContentInterface $value): self
     {
         $this->value = $value;
         return $this;
+    }
+
+    public function setExtra(array $extra): self
+    {
+        $this->extra = $extra;
+        return $this;
+    }
+
+    public function getExtra(): array
+    {
+        return $this->extra;
     }
 
     public function serialize()
     {
         $result = array();
         $result[$this->value->getKey()] = $this->value;
-        return $this->utilities->serializeForLogs($result);
-    }
-    
-    public function unserialize($serialized)
-    {
-        throw new \Exception('Not implemented yet.');
+
+        if (!empty($this->extra)) {
+            $result['extra'] = $this->extra;
+        }
+
+        return $this->utilities()->serializeForMothershipInternal($result, array('extra'));
     }
 }

@@ -1,42 +1,43 @@
-<?php namespace Mothership\Payload;
+<?php
 
-use Mothership\Utilities;
+declare(strict_types=1);
+
+namespace Mothership\Payload;
+
+use Mothership\UtilitiesTrait;
 
 class Trace implements ContentInterface
 {
-    private $frames;
-    private $exception;
-    private $utilities;
+    use UtilitiesTrait;
 
-    public function __construct(array $frames, ExceptionInfo $exception)
-    {
-        $this->utilities = new Utilities();
-        $this->setFrames($frames);
-        $this->setException($exception);
+    public function __construct(
+        private array $frames,
+        private ExceptionInfo $exception
+    ) {
     }
 
-    public function getKey()
+    public function getKey(): string
     {
         return 'trace';
     }
 
-    public function getFrames()
+    public function getFrames(): array
     {
         return $this->frames;
     }
 
-    public function setFrames(array $frames)
+    public function setFrames(array $frames): self
     {
         $this->frames = $frames;
         return $this;
     }
 
-    public function getException()
+    public function getException(): ExceptionInfo
     {
         return $this->exception;
     }
 
-    public function setException(ExceptionInfo $exception)
+    public function setException(ExceptionInfo $exception): self
     {
         $this->exception = $exception;
         return $this;
@@ -48,11 +49,6 @@ class Trace implements ContentInterface
             "frames" => $this->frames,
             "exception" => $this->exception,
         );
-        return $this->utilities->serializeForLogs($result);
-    }
-    
-    public function unserialize($serialized)
-    {
-        throw new \Exception('Not implemented yet.');
+        return $this->utilities()->serializeForMothership($result);
     }
 }

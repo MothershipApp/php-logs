@@ -1,37 +1,37 @@
-<?php namespace Mothership\Payload;
+<?php
 
-use Mothership\Utilities;
+declare(strict_types=1);
 
-class Context implements \Serializable
+namespace Mothership\Payload;
+
+use Mothership\SerializerInterface;
+use Mothership\UtilitiesTrait;
+
+class Context implements SerializerInterface
 {
-    private $pre;
-    private $post;
-    private $utilities;
+    use UtilitiesTrait;
 
-    public function __construct($pre, $post)
+    public function __construct(private ?array $pre, private ?array $post)
     {
-        $this->utilities = new Utilities();
-        $this->setPre($pre);
-        $this->setPost($post);
     }
 
-    public function getPre()
+    public function getPre(): ?array
     {
         return $this->pre;
     }
 
-    public function setPre($pre)
+    public function setPre(array $pre): self
     {
         $this->pre = $pre;
         return $this;
     }
 
-    public function getPost()
+    public function getPost(): ?array
     {
         return $this->post;
     }
 
-    public function setPost($post)
+    public function setPost(array $post): self
     {
         $this->post = $post;
         return $this;
@@ -43,11 +43,7 @@ class Context implements \Serializable
             "pre" => $this->pre,
             "post" => $this->post,
         );
-        return $this->utilities->serializeForLogs($result);
-    }
-    
-    public function unserialize($serialized)
-    {
-        throw new \Exception('Not implemented yet.');
+
+        return $this->utilities()->serializeForMothershipInternal($result);
     }
 }

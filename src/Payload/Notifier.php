@@ -1,64 +1,57 @@
-<?php namespace Mothership\Payload;
+<?php
 
-use Mothership\Utilities;
+declare(strict_types=1);
 
-class Notifier implements \Serializable
+namespace Mothership\Payload;
+
+use Mothership\SerializerInterface;
+use Mothership\UtilitiesTrait;
+
+class Notifier implements SerializerInterface
 {
-    const NAME = "devise-logs";
-    const VERSION = "0.1";
+    const NAME = "mothership-php";
+    const VERSION = "4.0.1";
 
-    public static function defaultNotifier()
+    use UtilitiesTrait;
+
+    public static function defaultNotifier(): self
     {
         return new Notifier(self::NAME, self::VERSION);
     }
 
-    private $name;
-    private $version;
-    private $utilities;
-
-    public function __construct($name, $version)
+    public function __construct(private string $name, private string $version)
     {
-        $this->utilities = new Utilities();
-        $this->setName($name);
-        $this->setVersion($version);
     }
 
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
 
-    public function setName($name)
+    public function setName(string $name): self
     {
         $this->name = $name;
-
         return $this;
     }
 
-    public function getVersion()
+    public function getVersion(): string
     {
         return $this->version;
     }
 
-    public function setVersion($version)
+    public function setVersion(string $version): self
     {
         $this->version = $version;
-
         return $this;
     }
 
     public function serialize()
     {
         $result = array(
-            "name"    => $this->name,
+            "name" => $this->name,
             "version" => $this->version,
         );
 
-        return $this->utilities->serializeForLogs($result);
-    }
-
-    public function unserialize($serialized)
-    {
-        throw new \Exception('Not implemented yet.');
+        return $this->utilities()->serializeForMothershipInternal($result);
     }
 }

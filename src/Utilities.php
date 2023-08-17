@@ -1,7 +1,18 @@
-<?php namespace Mothership;
+<?php
+
+declare(strict_types=1);
+
+namespace Mothership;
 
 final class Utilities
 {
+    private static $ObjectHashes;
+
+    public static function isWindows()
+    {
+        return php_uname('s') == 'Windows NT';
+    }
+
     public static function validateString(
         $input,
         $name = "?",
@@ -54,7 +65,7 @@ final class Utilities
             return;
         }
 
-        if (!is_integer($input)) {
+        if (!is_int($input)) {
             throw new \InvalidArgumentException("\$$name must be an integer");
         }
         if (!is_null($minValue) && $input < $minValue) {
@@ -65,18 +76,61 @@ final class Utilities
         }
     }
 
-    public static function serializeForLogs(
+    /**
+     * Serialize all, or the given keys, from the given object and store it
+     * in this class's internal store (see self::$ObjectHashes).
+     */
+    public static function serializeForMothershipInternal($obj, array $customKeys = null)
+    {
+        return self::serializeForMothership($obj, $customKeys, self::$ObjectHashes);
+    }
+
+    public static function serializeForMothership(
         $obj,
-        array $customKeys = null
+        array $customKeys = null,
+        &$objectHashes = array(),
+        $maxDepth = -1,
+        $depth = 0
     ) {
+
         $returnVal = array();
 
-        foreach ($obj as $key => $val) {
-            if ($val instanceof \Serializable) {
-                $val = $val->serialize();
-            } elseif (is_array($val)) {
-                $val = self::serializeForLogs($val);
+        if (is_object($obj)) {
+            if (self::serializedAlready($obj, $objectHashes)) {
+                return self::circularReferenceLabel($obj);
+            } else {
+                self::markSerialized($obj, $objectHashes);
             }
+        }
+
+        if ($maxDepth > 0 && $depth > $maxDepth) {
+            return null;
+        }
+
+        foreach ($obj as $key => $val) {
+            try {
+                if (is_object($val)) {
+                    $val = self::serializeObject(
+                        $val,
+                        $customKeys,
+                        $objectHashes,
+                        $maxDepth,
+                        $depth
+                    );
+                } elseif (is_array($val)) {
+                    $val = self::serializeForMothership(
+                        $val,
+                        $customKeys,
+                        $objectHashes,
+                        $maxDepth,
+                        $depth + 1
+                    );
+                }
+            } catch (\Throwable $e) {
+                $val = 'Error during serialization: ' . $e->getMessage();
+            }
+
+
             if ($customKeys !== null && in_array($key, $customKeys)) {
                 $returnVal[$key] = $val;
             } elseif (!is_null($val)) {
@@ -85,6 +139,74 @@ final class Utilities
         }
 
         return $returnVal;
+    }
+
+    private static function serializeObject(
+        $obj,
+        array $customKeys = null,
+        &$objectHashes = array(),
+        $maxDepth = -1,
+        $depth = 0
+    ) {
+        if (self::serializedAlready($obj, $objectHashes)) {
+            return self::circularReferenceLabel($obj);
+        }
+
+        // Internal Mothership classes.
+        if ($obj instanceof SerializerInterface) {
+            self::markSerialized($obj, $objectHashes);
+            return $obj->serialize();
+        }
+
+        // All other classes.
+        if ($obj instanceof \Serializable) {
+            self::markSerialized($obj, $objectHashes);
+            if (method_exists($obj, '__serialize')) {
+                return $obj->__serialize();
+            }
+            return $obj->serialize();
+        }
+
+        $serialized = array(
+            'class' => get_class($obj)
+        );
+
+        // Don't serialize Iterators as rewinding them does not guarantee the
+        // previous state.
+        if ($obj instanceof \Iterator) {
+            $serialized['value'] = 'non-serializable';
+            return $serialized;
+        }
+
+        $serialized['value'] = self::serializeForMothership(
+            $obj,
+            $customKeys,
+            $objectHashes,
+            $maxDepth,
+            $depth + 1
+        );
+
+        return $serialized;
+    }
+
+    private static function serializedAlready($obj, &$objectHashes)
+    {
+        if (!isset($objectHashes[spl_object_hash($obj)])) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static function markSerialized($obj, &$objectHashes)
+    {
+        $objectHashes[spl_object_hash($obj)] = true;
+        self::$ObjectHashes = $objectHashes;
+    }
+
+    private static function circularReferenceLabel($obj)
+    {
+        return '<CircularReference type:(' . get_class($obj) . ') ref:(' . spl_object_hash($obj) . ')>';
     }
 
     // from http://www.php.net/manual/en/function.uniqid.php#94959

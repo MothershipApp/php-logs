@@ -1,79 +1,66 @@
-<?php namespace Mothership\Payload;
+<?php
 
-use Mothership\LevelFactory;
+declare(strict_types=1);
 
-class Level implements \Serializable
+namespace Mothership\Payload;
+
+use Mothership\SerializerInterface;
+
+/**
+ * Each constant is a PSR-3 compatible logging level. They are mapped to Mothership
+ * service supported levels in {@see LevelFactory::getLevels()}.
+ */
+class Level implements SerializerInterface
 {
-    /**
-     * Those are PSR-3 compatible loggin levels. They are mapped to Logs
-     * service supported levels in Level::init()
-     */
     const EMERGENCY = 'emergency';
-    const ALERT = 'alert';
-    const CRITICAL = 'critical';
-    const ERROR = 'error';
-    const WARNING = 'warning';
-    const NOTICE = 'notice';
-    const INFO = 'info';
-    const DEBUG = 'debug';
-    
-    /**
-     * @deprecated 1.2.0
-     */
-    const IGNORED = 'ignored';
-    /**
-     * @deprecated 1.2.0
-     */
-    const IGNORE = 'ignore';
+    const ALERT     = 'alert';
+    const CRITICAL  = 'critical';
+    const ERROR     = 'error';
+    const WARNING   = 'warning';
+    const NOTICE    = 'notice';
+    const INFO      = 'info';
+    const DEBUG     = 'debug';
 
     /**
-     * @deprecated 1.2.0
+     * Instantiates the level object with the Mothership service compatible error
+     * levels.
      *
-     * Usage of Level::error(), Level::warning(), Level::info(), Level::notice(),
-     * Level::debug() is no longer supported. It has been replaced with matching
-     * class constants, i.e.: Level::ERROR
+     * @param string $level The Mothership service error level.
+     * @param int    $val   The Mothership service numeric error level.
      */
-    public static function __callStatic($name, $args)
-    {
-        $factory = new LevelFactory();
-        $level = $factory->fromName($name);
-        
-        if (!$level) {
-            throw new \Exception("Level '$level' doesn't exist.");
-        }
-        
-        return $level;
+    public function __construct(
+        private string $level,
+        private int $val
+    ) {
     }
 
     /**
-     * @var string
+     * Returns the Mothership service error level.
+     *
+     * @return string
      */
-    private $level;
-    private $val;
-
-    public function __construct($level, $val)
-    {
-        $this->level = $level;
-        $this->val = $val;
-    }
-
-    public function __toString()
+    public function __toString(): string
     {
         return $this->level;
     }
 
-    public function toInt()
+    /**
+     * Returns the Mothership service numeric error level.
+     *
+     * @return int
+     */
+    public function toInt(): int
     {
         return $this->val;
     }
 
+    /**
+     * Returns the serialized Mothership service level.
+     *
+     * @return string
+     */
     public function serialize()
     {
         return $this->level;
-    }
-    
-    public function unserialize($serialized)
-    {
-        throw new \Exception('Not implemented yet.');
     }
 }

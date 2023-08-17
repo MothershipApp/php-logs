@@ -1,25 +1,28 @@
-<?php namespace Mothership\Payload;
+<?php
+
+declare(strict_types=1);
+
+namespace Mothership\Payload;
+
+use Mothership\SerializerInterface;
 
 class TraceChain implements ContentInterface
 {
-    private $traces;
-
-    public function __construct(array $traces)
+    public function __construct(private array $traces)
     {
-        $this->setTraces($traces);
     }
 
-    public function getKey()
+    public function getKey(): string
     {
         return 'trace_chain';
     }
 
-    public function getTraces()
+    public function getTraces(): array
     {
         return $this->traces;
     }
 
-    public function setTraces($traces)
+    public function setTraces(array $traces): self
     {
         $this->traces = $traces;
         return $this;
@@ -29,15 +32,14 @@ class TraceChain implements ContentInterface
     {
         $mapValue = function ($value) {
             if ($value instanceof \Serializable) {
+                trigger_error("Using the Serializable interface has been deprecated.", E_USER_DEPRECATED);
+                return $value->serialize();
+            }
+            if ($value instanceof SerializerInterface) {
                 return $value->serialize();
             }
             return $value;
         };
         return array_map($mapValue, $this->traces);
-    }
-    
-    public function unserialize($serialized)
-    {
-        throw new \Exception('Not implemented yet.');
     }
 }

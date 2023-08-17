@@ -1,22 +1,22 @@
-<?php namespace Mothership;
+<?php
 
-class LogsJsHelper
+declare(strict_types=1);
+
+namespace Mothership;
+
+class MothershipJsHelper
 {
-
-    protected $config;
-    
     /**
      * @param array $config The array passed to he should have the same
-     * available options that you can find in Logs.js, using symbols or
+     * available options that you can find in Mothership.js, using symbols or
      * strings for the keys.
      */
-    public function __construct($config)
+    public function __construct(protected $config)
     {
-        $this->config = $config;
     }
-    
+
     /**
-     * Shortcut method for building the LogsJS Javascript
+     * Shortcut method for building the MothershipJS Javascript
      *
      * @param array $config @see addJs()
      * @param string $nonce @see addJs()
@@ -33,17 +33,17 @@ class LogsJsHelper
         $helper = new self($config);
         return $helper->addJs($headers, $nonce, $customJs);
     }
-    
+
     /**
-     * Build Javascript required to include LogsJS on
+     * Build Javascript required to include MothershipJS on
      * an HTML page
      *
      * @param array $headers Response headers usually retrieved through
      * headers_list() used to verify if nonce should be added to script
      * tags based on Content-Security-Policy
      * @param string $nonce Content-Security-Policy nonce string if exists
-     * @param strong $customJs Additional JavaScript to add at the end of
-     * LogsJs snippet
+     * @param string $customJs Additional JavaScript to add at the end of
+     * MothershipJs snippet
      *
      * @return string
      */
@@ -55,19 +55,19 @@ class LogsJsHelper
             $nonce
         );
     }
-    
+
     /**
-     * Build LogsJS config script
+     * Build MothershipJS config script
      *
      * @return string
      */
     public function configJsTag()
     {
-        return "var _logsConfig = " . json_encode($this->config, JSON_FORCE_OBJECT) . ";";
+        return "var _mothershipConfig = " . json_encode((object)$this->config) . ";";
     }
-    
+
     /**
-     * Build logs.snippet.js string
+     * Build mothership.snippet.js string
      *
      * @return string
      */
@@ -77,15 +77,15 @@ class LogsJsHelper
             $this->snippetPath()
         );
     }
-    
+
     /**
-     * @return string Path to the logs.snippet.js
+     * @return string Path to the mothership.snippet.js
      */
     public function snippetPath()
     {
-        return realpath(__DIR__ . "/../data/logs.snippet.js");
+        return realpath(__DIR__ . "/../data/mothership.snippet.js");
     }
-    
+
     /**
      * Should JS snippet be added to the HTTP response
      *
@@ -100,14 +100,14 @@ class LogsJsHelper
             $status == 200 &&
             $this->isHtml($headers) &&
             !$this->hasAttachment($headers);
-            
-            /**
-             * @todo not sure if below two conditions will be applicable
-             */
-            /* !env[JS_IS_INJECTED_KEY] */
-            /* && !streaming?(env) */
+
+        /**
+         * @todo not sure if below two conditions will be applicable
+         */
+        /* !env[JS_IS_INJECTED_KEY] */
+        /* && !streaming?(env) */
     }
-    
+
     /**
      * Is the HTTP response a valid HTML response
      *
@@ -119,7 +119,7 @@ class LogsJsHelper
     {
         return in_array('Content-Type: text/html', $headers);
     }
-    
+
     /**
      * Does the HTTP response include an attachment
      *
@@ -131,7 +131,7 @@ class LogsJsHelper
     {
         return in_array('Content-Disposition: attachment', $headers);
     }
-    
+
     /**
      * Is `nonce` attribute on the script tag needed?
      *
@@ -142,15 +142,17 @@ class LogsJsHelper
     public function shouldAppendNonce($headers)
     {
         foreach ($headers as $header) {
-            if (strpos($header, 'Content-Security-Policy') !== false &&
-                strpos($header, "'unsafe-inline'") !== false) {
+            if (
+                str_contains($header, 'Content-Security-Policy') &&
+                str_contains($header, "'unsafe-inline'")
+            ) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * Build safe HTML script tag
      *
@@ -165,11 +167,11 @@ class LogsJsHelper
         if ($headers !== null && $this->shouldAppendNonce($headers)) {
             if (!$nonce) {
                 throw new \Exception(
-                    'Content-Security-Policy is script-src '.
-                    'inline-unsafe but nonce value not provided.'
+                    'Content-Security-Policy is script-src ' .
+                        'inline-unsafe but nonce value not provided.'
                 );
             }
-            
+
             return "\n<script type=\"text/javascript\" nonce=\"$nonce\">$content</script>";
         }
         return "\n<script type=\"text/javascript\">$content</script>";

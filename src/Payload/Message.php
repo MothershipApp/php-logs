@@ -1,60 +1,46 @@
-<?php namespace Mothership\Payload;
+<?php
 
-use Mothership\Utilities;
+declare(strict_types=1);
+
+namespace Mothership\Payload;
+
+use Mothership\UtilitiesTrait;
 
 class Message implements ContentInterface
 {
-    private $body;
-    private $extra;
-    private $backtrace;
-    private $utilities;
+    use UtilitiesTrait;
 
     public function __construct(
-        $body,
-        array $extra = null,
-        $backtrace = null
+        private string $body,
+        private ?array $backtrace = null
     ) {
-        $this->utilities = new Utilities();
-        $this->setBody($body);
-        $this->setBacktrace($backtrace);
-        $this->extra = $extra == null ? array() : $extra;
     }
 
-    public function getKey()
+    public function getKey(): string
     {
         return 'message';
     }
 
-    public function getBody()
+    public function getBody(): string
     {
         return $this->body;
     }
 
-    public function setBody($body)
+    public function setBody(string $body): self
     {
         $this->body = $body;
         return $this;
     }
-    
-    public function getBacktrace()
+
+    public function getBacktrace(): ?array
     {
         return $this->backtrace;
     }
 
-    public function setBacktrace($backtrace)
+    public function setBacktrace(?array $backtrace): self
     {
         $this->backtrace = $backtrace;
         return $this;
-    }
-
-    public function __set($key, $val)
-    {
-        $this->extra[$key] = $val;
-    }
-
-    public function __get($key)
-    {
-        return isset($this->extra[$key]) ? $this->extra[$key] : null;
     }
 
     public function serialize()
@@ -63,14 +49,6 @@ class Message implements ContentInterface
             "body" => $this->getBody(),
             "backtrace" => $this->getBacktrace()
         );
-        foreach ($this->extra as $key => $value) {
-            $toSerialize[$key] = $value;
-        }
-        return $this->utilities->serializeForLogs($toSerialize, array_keys($this->extra));
-    }
-    
-    public function unserialize($serialized)
-    {
-        throw new \Exception('Not implemented yet.');
+        return $this->utilities()->serializeForMothership($toSerialize);
     }
 }

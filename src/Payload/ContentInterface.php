@@ -1,6 +1,20 @@
-<?php namespace Mothership\Payload;
+<?php
 
-interface ContentInterface extends \Serializable
+declare(strict_types=1);
+
+namespace Mothership\Payload;
+
+use Mothership\SerializerInterface;
+
+/**
+ * The logic required for the payload body content.
+ */
+interface ContentInterface extends SerializerInterface
 {
-    public function getKey();
+    /**
+     * Returns the key associated with the body content type used in JSON serialization.
+     *
+     * @return string
+     */
+    public function getKey(): string;
 }

@@ -1,4 +1,8 @@
-<?php namespace Mothership;
+<?php
+
+declare(strict_types=1);
+
+namespace Mothership;
 
 use Mothership\Payload\Context;
 use Mothership\Payload\Message;
@@ -12,13 +16,14 @@ use Mothership\Payload\Trace;
 use Mothership\Payload\Frame;
 use Mothership\Payload\TraceChain;
 use Mothership\Payload\ExceptionInfo;
-use MothershipMothership;
-use Mothership\Exceptions\PersonFuncException;
+use Mothership\Mothership;
+use Stringable;
+use Throwable;
 
 class DataBuilder implements DataBuilderInterface
 {
     const ANONYMIZE_IP = 'anonymize';
-    
+
     protected static $defaults;
 
     protected $environment;
@@ -41,6 +46,7 @@ class DataBuilder implements DataBuilderInterface
     protected $serverCodeVersion;
     protected $serverExtras;
     protected $custom;
+    protected $customDataMethod;
     protected $fingerprint;
     protected $title;
     protected $notifier;
@@ -54,23 +60,23 @@ class DataBuilder implements DataBuilderInterface
     protected $captureIP;
     protected $captureEmail;
     protected $captureUsername;
-    
-    /**
-     * @var LevelFactory
-     */
-    protected $levelFactory;
-    
+
     /**
      * @var Utilities
      */
     protected $utilities;
 
-    public function __construct($config)
+    /**
+     * Initializes the data builder from the Mothership configs.
+     *
+     * @param array $config The configuration array.
+     */
+    public function __construct(array $config)
     {
         self::$defaults = Defaults::get();
-        
+
         $this->setUtilities($config);
-        
+
         $this->setEnvironment($config);
 
         $this->setRawRequestBody($config);
@@ -102,113 +108,117 @@ class DataBuilder implements DataBuilderInterface
         $this->setSendMessageTrace($config);
         $this->setLocalVarsDump($config);
         $this->setCaptureErrorStacktraces($config);
-        $this->setLevelFactory($config);
         $this->setCaptureEmail($config);
         $this->setCaptureUsername($config);
         $this->setCaptureIP($config);
+        $this->setCustomDataMethod($config);
     }
 
     protected function setCaptureIP($config)
     {
-        $fromConfig = isset($config['capture_ip']) ? $config['capture_ip'] : null;
+        $fromConfig = $config['capture_ip'] ?? null;
         $this->captureIP = self::$defaults->captureIP($fromConfig);
     }
-    
+
     protected function setCaptureEmail($config)
     {
-        $fromConfig = isset($config['capture_email']) ? $config['capture_email'] : null;
+        $fromConfig = $config['capture_email'] ?? null;
         $this->captureEmail = self::$defaults->captureEmail($fromConfig);
     }
-    
+
     protected function setCaptureUsername($config)
     {
-        $fromConfig = isset($config['capture_username']) ? $config['capture_username'] : null;
+        $fromConfig = $config['capture_username'] ?? null;
         $this->captureUsername = self::$defaults->captureUsername($fromConfig);
     }
 
     protected function setEnvironment($config)
     {
-        $fromConfig = isset($config['environment']) ? $config['environment'] : self::$defaults->get()->environment();
+        $fromConfig = $config['environment'] ?? self::$defaults->get()->environment();
         $this->utilities->validateString($fromConfig, "config['environment']", null, false);
         $this->environment = $fromConfig;
     }
 
     protected function setDefaultMessageLevel($config)
     {
-        $fromConfig = isset($config['messageLevel']) ? $config['messageLevel'] : null;
+        $fromConfig = $config['messageLevel'] ?? null;
         $this->messageLevel = self::$defaults->messageLevel($fromConfig);
     }
 
     protected function setDefaultExceptionLevel($config)
     {
-        $fromConfig = isset($config['exceptionLevel']) ? $config['exceptionLevel'] : null;
+        $fromConfig = $config['exceptionLevel'] ?? null;
         $this->exceptionLevel = self::$defaults->exceptionLevel($fromConfig);
     }
 
     protected function setDefaultPsrLevels($config)
     {
-        $fromConfig = isset($config['psrLevels']) ? $config['psrLevels'] : null;
+        $fromConfig = $config['psrLevels'] ?? null;
         $this->psrLevels = self::$defaults->psrLevels($fromConfig);
     }
 
     protected function setErrorLevels($config)
     {
-        $fromConfig = isset($config['errorLevels']) ? $config['errorLevels'] : null;
+        $fromConfig = $config['errorLevels'] ?? null;
         $this->errorLevels = self::$defaults->errorLevels($fromConfig);
     }
 
     protected function setSendMessageTrace($config)
     {
-        $fromConfig = isset($config['send_message_trace']) ? $config['send_message_trace'] : null;
+        $fromConfig = $config['send_message_trace'] ?? null;
         $this->sendMessageTrace = self::$defaults->sendMessageTrace($fromConfig);
     }
-    
+
     protected function setRawRequestBody($config)
     {
-        $fromConfig = isset($config['include_raw_request_body']) ? $config['include_raw_request_body'] : null;
+        $fromConfig = $config['include_raw_request_body'] ?? null;
         $this->rawRequestBody = self::$defaults->rawRequestBody($fromConfig);
     }
 
     protected function setLocalVarsDump($config)
     {
-        $fromConfig = isset($config['local_vars_dump']) ? $config['local_vars_dump'] : null;
+        $fromConfig = $config['local_vars_dump'] ?? null;
         $this->localVarsDump = self::$defaults->localVarsDump($fromConfig);
+        if ($this->localVarsDump && !empty(ini_get('zend.exception_ignore_args'))) {
+            ini_set('zend.exception_ignore_args', '0');
+            assert(empty(ini_get('zend.exception_ignore_args')) || ini_get('zend.exception_ignore_args') == "0");
+        }
     }
-    
+
     protected function setCaptureErrorStacktraces($config)
     {
-        $fromConfig = isset($config['capture_error_stacktraces']) ? $config['capture_error_stacktraces'] : null;
+        $fromConfig = $config['capture_error_stacktraces'] ?? null;
         $this->captureErrorStacktraces = self::$defaults->captureErrorStacktraces($fromConfig);
     }
 
     protected function setCodeVersion($config)
     {
-        $fromConfig = isset($config['codeVersion']) ? $config['codeVersion'] : null;
+        $fromConfig = $config['codeVersion'] ?? null;
         if (!isset($fromConfig)) {
-            $fromConfig = isset($config['code_version']) ? $config['code_version'] : null;
+            $fromConfig = $config['code_version'] ?? null;
         }
         $this->codeVersion = self::$defaults->codeVersion($fromConfig);
     }
 
     protected function setPlatform($config)
     {
-        $fromConfig = isset($config['platform']) ? $config['platform'] : null;
+        $fromConfig = $config['platform'] ?? null;
         $this->platform = self::$defaults->platform($fromConfig);
     }
 
     protected function setFramework($config)
     {
-        $this->framework = isset($config['framework']) ? $config['framework'] : null;
+        $this->framework = $config['framework'] ?? null;
     }
 
     protected function setContext($config)
     {
-        $this->context = isset($config['context']) ? $config['context'] : null;
+        $this->context = $config['context'] ?? null;
     }
 
     protected function setRequestParams($config)
     {
-        $this->requestParams = isset($config['requestParams']) ? $config['requestParams'] : null;
+        $this->requestParams = $config['requestParams'] ?? null;
     }
 
     /*
@@ -216,125 +226,124 @@ class DataBuilder implements DataBuilderInterface
      */
     protected function setRequestBody($config)
     {
-        
-        $this->requestBody = isset($config['requestBody']) ? $config['requestBody'] : null;
-        
+
+        $this->requestBody = $config['requestBody'] ?? null;
+
         if (!$this->requestBody && $this->rawRequestBody) {
             $this->requestBody = file_get_contents("php://input");
-            if (version_compare(PHP_VERSION, '5.6.0') < 0) {
-                $_SERVER['php://input'] = $this->requestBody;
-            }
         }
     }
 
     protected function setRequestExtras($config)
     {
-        $this->requestExtras = isset($config["requestExtras"]) ? $config["requestExtras"] : null;
+        $this->requestExtras = $config["requestExtras"] ?? null;
     }
 
     protected function setPerson($config)
     {
-        $this->person = isset($config['person']) ? $config['person'] : null;
+        $this->person = $config['person'] ?? null;
     }
 
     protected function setPersonFunc($config)
     {
-        $this->personFunc = isset($config['person_fn']) ? $config['person_fn'] : null;
+        $this->personFunc = $config['person_fn'] ?? null;
     }
 
     protected function setServerRoot($config)
     {
-        $fromConfig = isset($config['serverRoot']) ? $config['serverRoot'] : null;
+        $fromConfig = $config['serverRoot'] ?? null;
         if (!isset($fromConfig)) {
-            $fromConfig = isset($config['root']) ? $config['root'] : null;
+            $fromConfig = $config['root'] ?? null;
         }
         $this->serverRoot = self::$defaults->serverRoot($fromConfig);
     }
 
     protected function setServerBranch($config)
     {
-        $fromConfig = isset($config['serverBranch']) ? $config['serverBranch'] : null;
+        $fromConfig = $config['serverBranch'] ?? null;
         if (!isset($fromConfig)) {
-            $fromConfig = isset($config['branch']) ? $config['branch'] : null;
+            $fromConfig = $config['branch'] ?? null;
         }
-        $allowExec = isset($config['allow_exec']) ? $config['allow_exec'] : null;
-        if (!isset($allowExec)) {
-            $allowExec = true;
+
+        $this->serverBranch = self::$defaults->branch($fromConfig);
+
+        if ($this->serverBranch === null) {
+            $autodetectBranch = $config['autodetect_branch'] ?? self::$defaults->autodetectBranch();
+
+            if ($autodetectBranch) {
+                $allowExec = $config['allow_exec'] ?? self::$defaults->allowExec();
+
+                $this->serverBranch = $this->detectGitBranch($allowExec);
+            }
         }
-        $this->serverBranch = self::$defaults->gitBranch($fromConfig, $allowExec);
     }
 
     protected function setServerCodeVersion($config)
     {
-        $this->serverCodeVersion = isset($config['serverCodeVersion']) ? $config['serverCodeVersion'] : null;
+        $this->serverCodeVersion = $config['serverCodeVersion'] ?? null;
     }
 
     protected function setServerExtras($config)
     {
-        $this->serverExtras = isset($config['serverExtras']) ? $config['serverExtras'] : null;
+        $this->serverExtras = $config['serverExtras'] ?? null;
     }
 
-    public function setCustom($config)
+    /**
+     * Stores the 'custom' key from the $config array. The 'custom' key should hold an array of key / value pairs to be
+     * sent to Mothership with each request.
+     *
+     * @param array $config The configuration array.
+     *
+     * @return void
+     */
+    public function setCustom(array $config): void
     {
-        $this->custom = isset($config['custom']) ? $config['custom'] : Defaults::get()->custom();
+        $this->custom = $config['custom'] ?? \Mothership\Defaults::get()->custom();
+    }
+
+    public function setCustomDataMethod($config)
+    {
+        $this->customDataMethod = $config['custom_data_method'] ?? \Mothership\Defaults::get()->customDataMethod();
     }
 
     protected function setFingerprint($config)
     {
-        $this->fingerprint = isset($config['fingerprint']) ? $config['fingerprint'] : null;
-        if (!is_null($this->fingerprint) && !is_callable($this->fingerprint)) {
-            $msg = "If set, config['fingerprint'] must be a callable that returns a uuid string";
-            throw new \InvalidArgumentException($msg);
-        }
+        $this->fingerprint = $config['fingerprint'] ?? null;
     }
 
     protected function setTitle($config)
     {
-        $this->title = isset($config['title']) ? $config['title'] : null;
-        if (!is_null($this->title) && !is_callable($this->title)) {
-            $msg = "If set, config['title'] must be a callable that returns a string";
-            throw new \InvalidArgumentException($msg);
-        }
+        $this->title = $config['title'] ?? null;
     }
 
     protected function setNotifier($config)
     {
-        $fromConfig = isset($config['notifier']) ? $config['notifier'] : null;
+        $fromConfig = $config['notifier'] ?? null;
         $this->notifier = self::$defaults->notifier($fromConfig);
     }
 
     protected function setBaseException($config)
     {
-        $fromConfig = isset($config['baseException']) ? $config['baseException'] : null;
+        $fromConfig = $config['baseException'] ?? null;
         $this->baseException = self::$defaults->baseException($fromConfig);
     }
 
     protected function setIncludeCodeContext($config)
     {
-        $fromConfig = isset($config['include_error_code_context']) ? $config['include_error_code_context'] : null;
+        $fromConfig = $config['include_error_code_context'] ?? null;
         $this->includeCodeContext = self::$defaults->includeCodeContext($fromConfig);
     }
 
     protected function setIncludeExcCodeContext($config)
     {
         $fromConfig =
-            isset($config['include_exception_code_context']) ? $config['include_exception_code_context'] : null;
+            $config['include_exception_code_context'] ?? null;
         $this->includeExcCodeContext = self::$defaults->includeExcCodeContext($fromConfig);
     }
-    
-    protected function setLevelFactory($config)
-    {
-        $this->levelFactory = isset($config['levelFactory']) ? $config['levelFactory'] : null;
-        if (!$this->levelFactory) {
-            throw new \InvalidArgumentException(
-                'Missing dependency: LevelFactory not provided to the DataBuilder.'
-            );
-        }
-    }
-    
+
     protected function setUtilities($config)
     {
-        $this->utilities = isset($config['utilities']) ? $config['utilities'] : null;
+        $this->utilities = $config['utilities'] ?? null;
         if (!$this->utilities) {
             throw new \InvalidArgumentException(
                 'Missing dependency: Utilities not provided to the DataBuilder.'
@@ -344,18 +353,22 @@ class DataBuilder implements DataBuilderInterface
 
     protected function setHost($config)
     {
-        $this->host = isset($config['host']) ? $config['host'] : self::$defaults->host();
+        $this->host = $config['host'] ?? self::$defaults->host();
     }
 
     /**
-     * @param string $level
-     * @param \Exception | \Throwable | string $toLog
-     * @param $context
+     * Creates the {@see Data} object from an exception or log message. This method respects the PSR-3 standard on
+     * handling exceptions in the context https://www.php-fig.org/psr/psr-3/#13-context.
+     *
+     * @param string                      $level   The severity log level for the item being logged.
+     * @param Throwable|string|Stringable $toLog   The exception or message to be logged.
+     * @param array                       $context Any additional context data.
+     *
      * @return Data
      */
-    public function makeData($level, $toLog, $context)
+    public function makeData(string $level, Throwable|string|Stringable $toLog, array $context): Data
     {
-        $env = $this->getEnvironment();
+        $env  = $this->getEnvironment();
         $body = $this->getBody($toLog, $context);
         $data = new Data($env, $body);
         $data->setLevel($this->getLevel($level, $toLog))
@@ -369,29 +382,38 @@ class DataBuilder implements DataBuilderInterface
             ->setPerson($this->getPerson())
             ->setServer($this->getServer())
             ->setCustom($this->getCustomForPayload($toLog, $context))
-            ->setFingerprint($this->getFingerprint())
+            ->setFingerprint($this->getFingerprint($context))
             ->setTitle($this->getTitle())
             ->setUuid($this->getUuid())
             ->setNotifier($this->getNotifier());
         return $data;
     }
 
-    protected function getEnvironment()
+    public function getEnvironment()
     {
         return $this->environment;
     }
 
-    protected function getBody($toLog, $context)
+    protected function getBody(Throwable|string|Stringable $toLog, array $context): Body
     {
         $baseException = $this->getBaseException();
-        if ($toLog instanceof ErrorWrapper) {
+
+        // Get the exception from either the $message or $context['exception']. See
+        // https://www.php-fig.org/psr/psr-3/#13-context for a description of $context['exception'].
+        if (isset($context['exception']) && $context['exception'] instanceof $baseException) {
+            $message = null;
+            if (!$toLog instanceof Throwable) {
+                $message = (string) $toLog;
+            }
+            $content = $this->getExceptionTrace($context['exception'], $message);
+        } elseif ($toLog instanceof ErrorWrapper) {
             $content = $this->getErrorTrace($toLog);
         } elseif ($toLog instanceof $baseException) {
             $content = $this->getExceptionTrace($toLog);
         } else {
-            $content = $this->getMessage($toLog, $context);
+            $content = $this->getMessage($toLog);
         }
-        return new Body($content);
+        return new Body($content, $context);
     }
 
     public function getErrorTrace(ErrorWrapper $error)
@@ -400,13 +422,15 @@ class DataBuilder implements DataBuilderInterface
     }
 
     /**
-     * @param \Throwable|\Exception $exc
+     * @param Throwable              $exc
+     * @param string|Stringable|null $message
+     *
      * @return Trace|TraceChain
      */
-    public function getExceptionTrace($exc)
+    public function getExceptionTrace(Throwable $exc, string|Stringable $message = null): Trace|TraceChain
     {
-        $chain = array();
-        $chain[] = $this->makeTrace($exc, $this->includeExcCodeContext);
+        $chain   = array();
+        $chain[] = $this->makeTrace($exc, $this->includeExcCodeContext, message: $message);
 
         $previous = $exc->getPrevious();
 
@@ -427,22 +451,29 @@ class DataBuilder implements DataBuilderInterface
     }
 
     /**
-     * @param \Throwable|\Exception $exception
-     * @param Boolean $includeContext whether or not to include context
-     * @param string $classOverride
+     * @param Throwable              $exception
+     * @param bool                   $includeContext whether or not to include context
+     * @param string|null            $classOverride
+     * @param string|Stringable|null $message
+     *
      * @return Trace
      */
-    public function makeTrace($exception, $includeContext, $classOverride = null)
-    {
+    public function makeTrace(
+        Throwable $exception,
+        bool $includeContext,
+        ?string $classOverride = null,
+        string|Stringable $message = null,
+    ): Trace {
         if ($this->captureErrorStacktraces) {
             $frames = $this->makeFrames($exception, $includeContext);
         } else {
             $frames = array();
         }
-        
+
         $excInfo = new ExceptionInfo(
             $classOverride ?: get_class($exception),
-            $exception->getMessage()
+            $exception->getMessage(),
+            $message
         );
         return new Trace($frames, $excInfo);
     }
@@ -450,20 +481,22 @@ class DataBuilder implements DataBuilderInterface
     public function makeFrames($exception, $includeContext)
     {
         $frames = array();
-        
+
         foreach ($this->getTrace($exception) as $frameInfo) {
-            $filename = isset($frameInfo['file']) ? $frameInfo['file'] : null;
-            $lineno = isset($frameInfo['line']) ? $frameInfo['line'] : null;
-            $method = isset($frameInfo['function']) ? $frameInfo['function'] : null;
+            // filename and lineno may be missing in pathological cases, like
+            // register_shutdown_function(fn() => var_dump(debug_backtrace()));
+            $filename = $frameInfo['file'] ?? null;
+            $lineno = $frameInfo['line'] ?? null;
+            $method = $frameInfo['function'] ?? null;
             if (isset($frameInfo['class'])) {
                 $method = $frameInfo['class'] . "::" . $method;
             }
-            $args = isset($frameInfo['args']) ? $frameInfo['args'] : null;
+            $args = $frameInfo['args'] ?? null;
 
             $frame = new Frame($filename);
             $frame->setLineno($lineno)
                 ->setMethod($method);
-                
+
             if ($this->localVarsDump && $args !== null) {
                 $frame->setArgs($args);
             }
@@ -474,7 +507,7 @@ class DataBuilder implements DataBuilderInterface
 
             $frames[] = $frame;
         }
-        
+
         $frames = array_reverse($frames);
 
         return $frames;
@@ -482,14 +515,14 @@ class DataBuilder implements DataBuilderInterface
 
     private function addCodeContextToFrame(Frame $frame, $filename, $line)
     {
-        if (!file_exists($filename)) {
+        if (null === $filename || !file_exists($filename)) {
             return;
         }
 
         $source = $this->getSourceLines($filename);
 
         $total = count($source);
-        $line = $line - 1;
+        $line = max($line - 1, 0);
         $frame->setCode($source[$line]);
         $offset = 6;
         $min = max($line - $offset, 0);
@@ -511,39 +544,45 @@ class DataBuilder implements DataBuilderInterface
             return $exc->getBacktrace();
         } else {
             $trace = $exc->getTrace();
-            
+
             // Add the Exception's file and line as the last frame of the trace
             array_unshift($trace, array('file' => $exc->getFile(), 'line' => $exc->getLine()));
-            
+
             return $trace;
         }
     }
 
-    protected function getMessage($toLog, $context)
+    protected function getMessage($toLog)
     {
         return new Message(
             (string)$toLog,
-            $context,
             $this->sendMessageTrace ?
-            debug_backtrace($this->localVarsDump ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS) :
-            null
+                debug_backtrace($this->localVarsDump ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS) :
+                null
         );
     }
 
     protected function getLevel($level, $toLog)
     {
-        if (is_null($level)) {
+        // resolve null level to default values, if we can
+        if ($level === null) {
             if ($toLog instanceof ErrorWrapper) {
-                $level = isset($this->errorLevels[$toLog->errorLevel]) ? $this->errorLevels[$toLog->errorLevel] : null;
+                $level = $this->errorLevels[$toLog->errorLevel] ?? null;
             } elseif ($toLog instanceof \Exception) {
                 $level = $this->exceptionLevel;
             } else {
                 $level = $this->messageLevel;
             }
         }
-        $level = strtolower($level);
-        $level = isset($this->psrLevels[$level]) ? $this->psrLevels[$level] : null;
-        return $this->levelFactory->fromName($level);
+        if ($level !== null) {
+            $level = strtolower($level);
+            $level = $this->psrLevels[$level] ?? null;
+            if ($level !== null) {
+                // this is a well-known PSR level: "error", "notice", "info", etc.
+                return LevelFactory::fromName($level);
+            }
+        }
+        return null;
     }
 
     protected function getTimestamp()
@@ -590,58 +629,62 @@ class DataBuilder implements DataBuilderInterface
             ->setParams($this->getRequestParams())
             ->setBody($this->getRequestBody())
             ->setUserIp($this->getUserIp());
-      
+
         if (isset($_SERVER)) {
-            $request->setMethod(isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : null)
-                ->setQueryString(isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : null);
+            $request->setMethod($_SERVER['REQUEST_METHOD'] ?? null)
+                ->setQueryString($_SERVER['QUERY_STRING'] ?? null);
         }
-      
+
         if (isset($_GET)) {
             $request->setGet($_GET);
         }
         if (isset($_POST)) {
             $request->setPost($_POST);
         }
-        
+
         if ($request->getMethod() === 'PUT') {
             $postData = array();
-            parse_str($request->getBody(), $postData);
+            $body = $request->getBody();
+            if ($body !== null) {
+                // PHP reports warning if parse_str() detects more than max_input_vars items.
+                @parse_str($body, $postData);
+            }
             $request->setPost($postData);
         }
-        
+
         $extras = $this->getRequestExtras();
         if (!$extras) {
             $extras = array();
         }
 
         $request->setExtras($extras);
-        
+
         if (isset($_SESSION) && is_array($_SESSION) && count($_SESSION) > 0) {
             $request->setSession($_SESSION);
         }
         return $request;
     }
-    
+
     public function parseForwardedString($forwarded)
     {
         $result = array();
-        
+
         // Remove Forwarded   = 1#forwarded-element header prefix
         $parts = trim(str_replace('Forwarded:', '', $forwarded));
-        
+
         /**
          * Break up the forwarded-element =
          *  [ forwarded-pair ] *( ";" [ forwarded-pair ] )
          */
         $parts = explode(';', $parts);
-        
+
         /**
          * Parse forwarded pairs
          */
         foreach ($parts as $forwardedPair) {
             $forwardedPair = trim($forwardedPair);
-            
-            
+
+
             if (stripos($forwardedPair, 'host=') !== false) {
                 // Parse 'host' forwarded pair
                 $result['host'] = substr($forwardedPair, strlen('host='));
@@ -653,34 +696,34 @@ class DataBuilder implements DataBuilderInterface
                 $fpParts = explode(',', $forwardedPair);
                 foreach ($fpParts as $fpPart) {
                     $fpPart = trim($fpPart);
-                    
+
                     if (stripos($fpPart, 'for=') !== false) {
                         // Parse 'for' forwarded pair
-                        $result['for'] = isset($result['for']) ? $result['for'] : array();
+                        $result['for'] = $result['for'] ?? array();
                         $result['for'][] = substr($fpPart, strlen('for='));
                     } elseif (stripos($fpPart, 'by=') !== false) {
                         // Parse 'by' forwarded pair
-                        $result['by'] = isset($result['by']) ? $result['by'] : array();
+                        $result['by'] = $result['by'] ?? array();
                         $result['by'][] = substr($fpPart, strlen('by='));
                     }
                 }
             }
         }
-        
+
         return $result;
     }
-    
+
     /*
      * @SuppressWarnings(PHPMD.Superglobals)
      */
     public function getUrlProto()
     {
         $proto = '';
-        
+
         if (!empty($_SERVER['HTTP_FORWARDED'])) {
             extract($this->parseForwardedString($_SERVER['HTTP_FORWARDED']));
         }
-        
+
         if (empty($proto)) {
             if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
                 $proto = explode(',', strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']));
@@ -691,21 +734,21 @@ class DataBuilder implements DataBuilderInterface
                 $proto = 'http';
             }
         }
-        
+
         return $proto;
     }
-    
+
     /*
      * @SuppressWarnings(PHPMD.Superglobals)
      */
     public function getUrlHost()
     {
         $host = '';
-        
+
         if (!empty($_SERVER['HTTP_FORWARDED'])) {
             extract($this->parseForwardedString($_SERVER['HTTP_FORWARDED']));
         }
-        
+
         if (empty($host)) {
             if (!empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
                 $host = $_SERVER['HTTP_X_FORWARDED_HOST'];
@@ -718,17 +761,17 @@ class DataBuilder implements DataBuilderInterface
                 $host = 'unknown';
             }
         }
-        
+
         return $host;
     }
-    
+
     /*
      * @SuppressWarnings(PHPMD.Superglobals)
      */
     public function getUrlPort($proto)
     {
         $port = '';
-        
+
         if (!empty($_SERVER['HTTP_X_FORWARDED_PORT'])) {
             $port = $_SERVER['HTTP_X_FORWARDED_PORT'];
         } elseif (!empty($_SERVER['SERVER_PORT'])) {
@@ -738,7 +781,7 @@ class DataBuilder implements DataBuilderInterface
         } else {
             $port = 80;
         }
-        
+
         return $port;
     }
 
@@ -750,7 +793,7 @@ class DataBuilder implements DataBuilderInterface
         $proto = $this->getUrlProto();
         $host = $this->getUrlHost();
         $port = $this->getUrlPort($proto);
-        
+
 
         $url = $proto . '://' . $host;
         if (($proto == 'https' && $port != 443) || ($proto == 'http' && $port != 80)) {
@@ -758,7 +801,7 @@ class DataBuilder implements DataBuilderInterface
         }
 
         if (isset($_SERVER)) {
-            $path = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/';
+            $path = $_SERVER['REQUEST_URI'] ?? '/';
             $url .= $path;
         }
 
@@ -792,7 +835,7 @@ class DataBuilder implements DataBuilderInterface
         }
     }
 
-    
+
     protected function getRequestParams()
     {
         return $this->requestParams;
@@ -803,29 +846,36 @@ class DataBuilder implements DataBuilderInterface
         return $this->requestBody;
     }
 
-    /*
+    /**
+     * Get the user's IP, by inspecting the http header X-Real-IP, or if not
+     * that first address from the http header X-Forwarded-For, and if not that
+     * then the remote IP connecting to the web server, if available.
+     *
      * @SuppressWarnings(PHPMD.Superglobals)
      */
-    protected function getUserIp()
+    protected function getUserIp(): ?string
     {
         if (!isset($_SERVER) || $this->captureIP === false) {
             return null;
         }
-        
-        $ipAddress = null;
-        
-        $forwardFor = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : null;
+
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+
+        $forwardFor = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? null;
         if ($forwardFor) {
             // return everything until the first comma
             $parts = explode(',', $forwardFor);
             $ipAddress = $parts[0];
         }
-        $realIp = isset($_SERVER['HTTP_X_REAL_IP']) ? $_SERVER['HTTP_X_REAL_IP'] : null;
+        $realIp = $_SERVER['HTTP_X_REAL_IP'] ?? null;
         if ($realIp) {
             $ipAddress = $realIp;
         }
-        $ipAddress = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
-        
+
+        if ($ipAddress === null) {
+            return null;
+        }
+
         if ($this->captureIP === DataBuilder::ANONYMIZE_IP) {
             if (filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
                 $parts = explode('.', $ipAddress);
@@ -839,7 +889,7 @@ class DataBuilder implements DataBuilderInterface
                     '0000:0000:0000:0000:0000';
             }
         }
-        
+
         return $ipAddress;
     }
 
@@ -856,10 +906,9 @@ class DataBuilder implements DataBuilderInterface
         $personData = $this->person;
         if (!isset($personData) && is_callable($this->personFunc)) {
             try {
-                $personData = call_user_func($this->personFunc);
+                $personData = ($this->personFunc)();
             } catch (\Exception $exception) {
-                Logs::scope(array('person_fn' => null))->
-                    log(Level::ERROR, $exception);
+                Mothership::scope(array('person_fn' => null))->log(Level::ERROR, $exception);
             }
         }
 
@@ -867,7 +916,7 @@ class DataBuilder implements DataBuilderInterface
             return null;
         }
 
-        $identifier = $personData['id'];
+        $identifier = (string)$personData['id'];
 
         $email = null;
         if ($this->captureEmail && isset($personData['email'])) {
@@ -907,10 +956,7 @@ class DataBuilder implements DataBuilderInterface
 
     protected function getHost()
     {
-        if (isset($this->host)) {
-            return $this->host;
-        }
-        return gethostname();
+        return $this->host ?? gethostname();
     }
 
     protected function getServerRoot()
@@ -932,51 +978,126 @@ class DataBuilder implements DataBuilderInterface
     {
         return $this->serverExtras;
     }
-    
-    public function getCustom()
+
+    /**
+     * Returns the array of key / value pairs that will be sent with the payload to Mothership.
+     *
+     * @return array|null
+     */
+    public function getCustom(): ?array
     {
         return $this->custom;
     }
 
-    protected function getCustomForPayload($toLog, $context)
+    public function getCustomDataMethod()
     {
-        $custom = $this->getCustom();
+        return $this->customDataMethod;
+    }
 
-        // Make this an array if possible:
-        if ($custom instanceof \Serializable) {
-            $custom = $custom->serialize();
-        } elseif (is_null($custom)) {
-            $custom = array();
-        } elseif (!is_array($custom)) {
-            $custom = get_object_vars($custom);
+    /**
+     * Returns the processed custom value to be sent with the payload. If there
+     * is no custom value an empty array is returned.
+     *
+     * @param Throwable|string $toLog
+     * @param array            $context
+     *
+     * @return array
+     */
+    protected function getCustomForPayload(Throwable|string $toLog, array $context): array
+    {
+        $custom = $this->resolveCustomContent($this->getCustom());
+
+        if ($customDataMethod = $this->getCustomDataMethod()) {
+            $customDataMethodContext = $context['custom_data_method_context'] ?? null;
+
+            $customDataMethodResult = $customDataMethod($toLog, $customDataMethodContext);
+
+            $custom = array_merge($custom, $customDataMethodResult);
         }
 
-        return array_replace_recursive(array(), $context, $custom);
+        unset($context['custom_data_method_context']);
+
+        return $custom;
     }
-    
-    public function addCustom($key, $data)
+
+    /**
+     * This method transforms $custom into an array that can be processed and sent in the payload.
+     *
+     * @param mixed $custom
+     *
+     * @return array
+     * @throws \Exception If Serializable::serialize() returns an invalid type an exception can be thrown.
+     *                    This can be removed once support for Serializable has been removed.
+     */
+    protected function resolveCustomContent(mixed $custom): array
     {
-        if ($this->custom === null) {
+        // This check is placed first because it should return a string|null, and we want to return an array.
+        if ($custom instanceof \Serializable) {
+            // We don't return this value instead we run it through the rest of the checks. The same is true for the
+            // next check.
+            if (method_exists($custom, '__serialize')) {
+                $custom = $custom->__serialize();
+            } else {
+                trigger_error("Using the Serializable interface has been deprecated.", E_USER_DEPRECATED);
+                $custom = $custom->serialize();
+            }
+        } else {
+            if ($custom instanceof SerializerInterface) {
+                $custom = $custom->serialize();
+            }
+        }
+        // Values that resolve to false e.g. null, false, 0, 0.0, "", and [], we will ignore.
+        // Otherwise, after all other checks we will assign it to the "message" key.
+        if (!$custom) {
+            return [];
+        }
+        if (is_object($custom)) {
+            trigger_error(
+                "Using an object that does not implement the "
+                    . "Mothership\SerializerInterface interface has been deprecated.",
+                E_USER_DEPRECATED
+            );
+            return get_object_vars($custom);
+        }
+        if (is_array($custom)) {
+            return $custom;
+        }
+        return ['message' => $custom];
+    }
+
+    /**
+     * Adds a new key / value pair that will be sent with the payload to Mothership. If the key already exists in the
+     * custom data array the existing value will be overwritten.
+     *
+     * @param string $key  The key to store this value in the custom array.
+     * @param mixed  $data The value that is going to be stored. Must be a primitive or JSON serializable.
+     *
+     * @return void
+     */
+    public function addCustom(string $key, mixed $data): void
+    {
+        if (!is_array($this->custom)) {
             $this->custom = array();
         }
-        
-        if (!is_array($this->custom)) {
-            throw new \Exception(
-                "Custom data configured in Logs::init() is not an array."
-            );
-        }
-        
+
         $this->custom[$key] = $data;
     }
-    
-    public function removeCustom($key)
+
+    /**
+     * Removes a key from the custom data array that is sent with the payload to Mothership.
+     *
+     * @param string $key The key to remove.
+     *
+     * @return void
+     */
+    public function removeCustom(string $key): void
     {
         unset($this->custom[$key]);
     }
 
-    protected function getFingerprint()
+    protected function getFingerprint($context)
     {
-        return $this->fingerprint;
+        return $context['fingerprint'] ?? $this->fingerprint;
     }
 
     protected function getTitle()
@@ -1025,18 +1146,18 @@ class DataBuilder implements DataBuilderInterface
 
         return $source;
     }
-    
+
     /**
-     * Wrap a PHP error in an ErrorWrapper class and add backtrace information
+     * Wrap a PHP error in the {@see ErrorWrapper} class and add stacktrace information.
      *
-     * @param string $errno
-     * @param string $errstr
-     * @param string $errfile
-     * @param string $errline
+     * @param int         $errno   The level of the error raised.
+     * @param string      $errstr  The error message.
+     * @param string|null $errfile The filename that the error was raised in.
+     * @param int|null    $errline The line number where the error was raised.
      *
      * @return ErrorWrapper
      */
-    public function generateErrorWrapper($errno, $errstr, $errfile, $errline)
+    public function generateErrorWrapper(int $errno, string $errstr, ?string $errfile, ?int $errline): ErrorWrapper
     {
         return new ErrorWrapper(
             $errno,
@@ -1047,22 +1168,22 @@ class DataBuilder implements DataBuilderInterface
             $this->utilities
         );
     }
-    
+
     /**
      * Fetches the stack trace for fatal and regular errors.
      *
-     * @var string $errfile
-     * @var string $errline
+     * @param string|null $errfile The filename that the error was raised in.
+     * @param int|null    $errline The line number where the error was raised.
      *
-     * @return Mothership\ErrorWrapper
+     * @return array
      */
-    protected function buildErrorTrace($errfile, $errline)
+    protected function buildErrorTrace(?string $errfile, ?int $errline): array
     {
         if ($this->captureErrorStacktraces) {
             $backTrace = $this->fetchErrorTrace();
-            
+
             $backTrace = $this->stripShutdownFrames($backTrace);
-            
+
             // Add the final frame
             array_unshift(
                 $backTrace,
@@ -1071,48 +1192,108 @@ class DataBuilder implements DataBuilderInterface
         } else {
             $backTrace = array();
         }
-        
+
         return $backTrace;
     }
-    
+
+    /**
+     * Check if this PHP install has the `xdebug_get_function_stack` function.
+     *
+     * @return bool
+     */
+    private function hasXdebugGetFunctionStack()
+    {
+        // TBD: allow the consumer to disable use of Xdebug even if it's
+        // TBD: installed in the consumer's runtime environment?
+
+        // if the function doesn't exist, we're obviously unable to use it
+        if (!function_exists('xdebug_get_function_stack')) {
+            return false;
+        }
+
+        // if the function's not provided by Xdebug, we can't guarantee an
+        // API conformance so we refuse to use it
+        $version = phpversion('xdebug');
+        if (false === $version) {
+            return false;
+        }
+
+        // in XDebug 2 and prior, existence of the function implied usability
+        if (version_compare($version, '3.0.0', '<')) {
+            return true;
+        }
+
+        // in XDebug 3 and later, the function is defined but disabled unless
+        // the xdebug mode parameter includes it
+        return !str_contains(ini_get('xdebug.mode'), 'develop') ? false : true;
+    }
+
     private function fetchErrorTrace()
     {
-        if (function_exists('xdebug_get_function_stack')) {
+        if ($this->hasXdebugGetFunctionStack()) {
             return array_reverse(\xdebug_get_function_stack());
         } else {
             return debug_backtrace($this->localVarsDump ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS);
         }
     }
-    
+
     private function stripShutdownFrames($backTrace)
     {
         foreach ($backTrace as $index => $frame) {
             extract($frame);
-            
+
             $fatalHandlerMethod = (isset($method)
-                                    && $method === 'Mothership\\Handlers\\FatalHandler::handle');
-                                    
+                && $method === 'Mothership\\Handlers\\FatalHandler::handle');
+
             $fatalHandlerClassAndFunction = (isset($class)
-                                                && $class === 'Mothership\\Handlers\\FatalHandler'
-                                                && isset($function)
-                                                && $function === 'handle');
-            
+                && $class === 'Mothership\\Handlers\\FatalHandler'
+                && isset($function)
+                && $function === 'handle');
+
             $errorHandlerMethod = (isset($method)
-                                    && $method === 'Mothership\\Handlers\\ErrorHandler::handle');
-                                    
+                && $method === 'Mothership\\Handlers\\ErrorHandler::handle');
+
             $errorHandlerClassAndFunction = (isset($class)
-                                                && $class === 'Mothership\\Handlers\\ErrorHandler'
-                                                && isset($function)
-                                                && $function === 'handle');
-            
-            if ($fatalHandlerMethod ||
-                 $fatalHandlerClassAndFunction ||
-                 $errorHandlerMethod ||
-                 $errorHandlerClassAndFunction ) {
-                return array_slice($backTrace, $index+1);
+                && $class === 'Mothership\\Handlers\\ErrorHandler'
+                && isset($function)
+                && $function === 'handle');
+
+            if (
+                $fatalHandlerMethod ||
+                $fatalHandlerClassAndFunction ||
+                $errorHandlerMethod ||
+                $errorHandlerClassAndFunction
+            ) {
+                return array_slice($backTrace, $index + 1);
             }
         }
-        
+
         return $backTrace;
+    }
+
+    public function detectGitBranch($allowExec = true): ?string
+    {
+        if ($allowExec) {
+            static $cachedValue;
+            static $hasExecuted = false;
+            if (!$hasExecuted) {
+                $cachedValue = self::getGitBranch();
+                $hasExecuted = true;
+            }
+            return $cachedValue;
+        }
+        return null;
+    }
+
+    private static function getGitBranch(): ?string
+    {
+        if (function_exists('shell_exec')) {
+            $stdRedirCmd = Utilities::isWindows() ? ' > NUL' : ' 2> /dev/null';
+            $output = shell_exec('git rev-parse --abbrev-ref HEAD' . $stdRedirCmd);
+            if (is_string($output)) {
+                return rtrim($output);
+            }
+        }
+        return null;
     }
 }

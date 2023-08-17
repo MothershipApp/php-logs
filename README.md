@@ -15,13 +15,13 @@ composer require mothership-app/php-logs
 ## General PHP
 
 ```php
-use Mothership\Logger;
+use Mothership\Mothership;
 
-Logger::init([
+Mothership::init([
     'access_token' => 'XXXXXXXXX - YOUR KEY - XXXXXXXX',
     'environment'  => 'production'
 ]);
-Logger::error($exception);
+Mothership::error($exception);
 ```
 
 ## Laravel
@@ -30,7 +30,7 @@ Edit your ```app/Exceptions/Handler.php``` file with the following and you're go
 
 ```php
 use Illuminate\Support\Facades\App;
-use Mothership\Logger;
+use Mothership\Mothership;
 ...
 
 /**
@@ -44,11 +44,11 @@ public function render($request, Exception $exception)
 {
     if ($this->shouldReport($exception))
     {
-        Logger::init([
+        Mothership::init([
             'access_token' => 'XXXXXXXXX - YOUR KEY - XXXXXXXX',
             'environment'  => App::environment()
         ]);
-        Logger::error($exception);
+        Mothership::error($exception);
     }
 
     parent::report($exception);

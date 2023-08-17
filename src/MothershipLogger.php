@@ -263,7 +263,7 @@ class MothershipLogger extends AbstractLogger
 
             $response = $this->send($truncated, $accessToken);
         }
-        dd($this->verboseLogger(), $response);
+
         $this->handleResponse($payload, $response);
 
         if ($response->getStatus() === 0) {

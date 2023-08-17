@@ -215,7 +215,7 @@ class Config
     /**
      * @var boolean Should the SDK raise an exception after logging an error.
      * This is useful in test and development enviroments.
-     * https://github.com/mothership/mothership-php/issues/448
+     * https://github.com/mothership-app/php-logs
      */
     private bool $raiseOnError = false;
 
@@ -333,8 +333,8 @@ class Config
 
     private function setAccessToken(array $config): void
     {
-        if (isset($_ENV['ROLLBAR_ACCESS_TOKEN']) && !isset($config['access_token'])) {
-            $config['access_token'] = $_ENV['ROLLBAR_ACCESS_TOKEN'];
+        if (isset($_ENV['MOTHERSHIP_ACCESS_TOKEN']) && !isset($config['access_token'])) {
+            $config['access_token'] = $_ENV['MOTHERSHIP_ACCESS_TOKEN'];
         }
 
         $this->utilities()->validateString(

@@ -34,8 +34,8 @@ class CurlSender implements SenderInterface
         $this->endpoint = \Mothership\Defaults::get()->endpoint() . 'item/';
         $this->timeout = \Mothership\Defaults::get()->timeout();
 
-        if (isset($_ENV['ROLLBAR_ENDPOINT']) && !isset($opts['endpoint'])) {
-            $opts['endpoint'] = $_ENV['ROLLBAR_ENDPOINT'];
+        if (isset($_ENV['MOTHERSHIP_ENDPOINT']) && !isset($opts['endpoint'])) {
+            $opts['endpoint'] = $_ENV['MOTHERSHIP_ENDPOINT'];
         }
         if (array_key_exists('endpoint', $opts)) {
             $this->utilities()->validateString($opts['endpoint'], 'opts["endpoint"]', null, false);

@@ -66,8 +66,8 @@ class Defaults
         $this->errorSampleRates = array();
         $this->exceptionSampleRates = array();
 
-        if (defined('ROLLBAR_INCLUDED_ERRNO_BITMASK')) {
-            $this->includedErrno = ROLLBAR_INCLUDED_ERRNO_BITMASK;
+        if (defined('MOTHERSHIP_INCLUDED_ERRNO_BITMASK')) {
+            $this->includedErrno = MOTHERSHIP_INCLUDED_ERRNO_BITMASK;
         }
     }
 

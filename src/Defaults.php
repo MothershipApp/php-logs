@@ -360,7 +360,7 @@ class Defaults
     private $allowExec = true;
     private $messageLevel = "warning";
     private $exceptionLevel = "error";
-    private $endpoint = 'https://mothership.app/api/1/';
+    private $endpoint = 'https://logs.mothership.app/api/v1/logs/';
     private $captureErrorStacktraces = true;
     private $checkIgnore = null;
     private $custom = null;

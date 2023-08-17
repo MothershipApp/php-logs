@@ -152,7 +152,7 @@ class CurlSender implements SenderInterface
         curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, $this->verifyPeer);
         curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($handle, CURLOPT_TIMEOUT, $this->timeout);
-        curl_setopt($handle, CURLOPT_HTTPHEADER, array('X-Mothership-Access-Token: ' . $accessToken));
+        curl_setopt($handle, CURLOPT_HTTPHEADER, array('Authorization: Bearer ' . $accessToken));
         curl_setopt($handle, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 
         if (!is_null($this->caCertPath)) {

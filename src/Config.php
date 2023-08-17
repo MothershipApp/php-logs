@@ -340,7 +340,7 @@ class Config
         $this->utilities()->validateString(
             $config['access_token'],
             "config['access_token']",
-            32,
+            null,
             !$this->sender->requireAccessToken(),
         );
         $this->accessToken = $config['access_token'] ?? '';
